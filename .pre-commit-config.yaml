@@ -1,0 +1,12 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+    -   id: end-of-file-fixer
+    -   id: trailing-whitespace
+    -   id: no-commit-to-branch
+        args: [--branch, dev, --branch, main]
+-   repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v13.0.0
+    hooks:
+    -   id: clang-format
