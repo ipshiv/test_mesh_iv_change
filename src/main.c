@@ -17,7 +17,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
-
 static void bt_ready(int err)
 {
 	if (err) {
@@ -45,11 +44,37 @@ static void bt_ready(int err)
 
 	LOG_INF("Mesh initialized\n");
 
-	if (IS_ENABLED(CONFIG_SOC_SERIES_NRF52X) && IS_ENABLED(CONFIG_MCUMGR_SMP_BT)) {
+	if (IS_ENABLED(CONFIG_SOC_SERIES_NRF52X) &&
+	    IS_ENABLED(CONFIG_MCUMGR_SMP_BT)) {
 		err = smp_dfu_init();
 		if (err) {
 			LOG_ERR("Unable to initialize DFU (err %d)\n", err);
 		}
+	}
+}
+
+static void button_handler_cb(uint32_t pressed, uint32_t changed)
+{
+	if (!bt_mesh_is_provisioned()) {
+		return;
+	}
+
+	if (IS_ENABLED(CONFIG_BT_MESH_LOW_POWER) &&
+	    (pressed & changed & BIT(3))) {
+		bt_mesh_proxy_identity_enable();
+		return;
+	}
+
+	if (pressed & changed & BIT(0)) {
+		// start IV
+		static bool isEnabled = false;
+		bt_mesh_iv_update_test(isEnabled = !isEnabled);
+		LOG_INF("bt_mesh_iv_update_test >> set to %s",
+			isEnabled ? "ENABLED" : "DISABLED");
+	} else if (pressed & changed & BIT(1)) {
+		// force update
+		LOG_INF("bt_mesh_iv_update >> status %s",
+			bt_mesh_iv_update() ? "OK" : "FAILED");
 	}
 }
 
@@ -63,4 +88,10 @@ void main(void)
 	if (err) {
 		LOG_ERR("Bluetooth init failed (err %d)\n", err);
 	}
+
+	static struct button_handler button_handler = {
+		.cb = button_handler_cb,
+	};
+
+	dk_button_handler_add(&button_handler);
 }
